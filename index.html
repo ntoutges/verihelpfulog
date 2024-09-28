@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <title>Verilog Viewer</title>
+        <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+    
+        <style>
+            .plots,
+            .logs {
+                padding: 5px;
+                box-shadow: #a3a3a3 2px 2px 2px 2px;
+                border-radius: 10px;
+
+                display: flex;
+                flex-direction: column;
+                gap: 3px;
+            }
+
+            .logs {
+                background: #dfedf3;
+
+                order: 0;
+            }
+
+            .plots {
+                order: 1;
+            }
+
+            .logs > .log-contents {
+                height: 100px;
+                overflow-y: auto;
+
+                display: grid;
+                grid-template-columns: min-content auto;
+                column-gap: 10px;
+            
+                font-family: 'Courier New', Courier, monospace;
+                font-size: 12px;
+
+                box-shadow: #9cb5b7 1px 1px 4px 1px;           
+            }
+            
+            .logs > .log-contents > * {
+                display: contents;
+            }
+
+            .logs > .log-contents > * > *:nth-child(1) {
+                color: #d15f5f;
+            }
+
+            h2 {
+                margin: 0px 0px 5px 10px;
+                user-select: none;
+            }
+
+            #graphs {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .log-filter {
+                display: flex;
+                flex-direction: row;
+                gap: 2px;
+            }
+
+            .filters {
+                width: 8ch;
+            }
+        </style>
+    </head>
+
+    <body>
+
+        <select id="available-runs">
+            <option value="null">Loading...</option>
+        </select>
+
+        <div id="graphs"></div>
+
+        <script>
+            const $ = document.querySelector.bind(document);
+
+            $("#available-runs").addEventListener("change", loadRun);
+
+            fetch("/runs").then(d => d.json()).then(runs => {
+                $("#available-runs").innerHTML = "";
+                runs.sort((a,b) => +b.substring(b.lastIndexOf("-") + 1) - +a.substring(a.lastIndexOf("-") + 1))
+
+                for (const run of runs) {
+                    const opt = document.createElement("option");
+                    opt.value = run;
+                    opt.textContent = run;
+
+                    $("#available-runs").append(opt);
+                }
+
+                if (runs.length == 0) {
+                    $("#available-runs").innerText = "<option value=\"null\">No Available Runs</option>"
+                    return
+                }
+            
+                $("#available-runs").value = runs[0];
+                loadRun(runs[0]);
+            });
+
+            let loading = false;
+            let newVal = false;
+            function loadRun() {
+                if (loading) {
+                    newVal = true;
+                    return;
+                }
+
+                loading = true;
+                newVal = false;
+
+                let id = $("#available-runs").value;
+                $("#graphs").innerHTML = "";
+
+                fetch(`/runs?r=${encodeURIComponent(id)}`).then(d => d.json()).then(modules => {
+                    if (newVal) {
+                        loading = false;
+                        newVal = false;
+                        loadRun();
+                        return;
+                    }
+                
+                    const files = {};
+                    const promises = [];
+                    for (const mod of modules) {
+                        ((mod) => {
+                            promises.push(fetch(`/${encodeURIComponent(id)}/${mod}`).then(d => d.text()).then(file => [ mod, file ]))
+                        })(mod);
+                    }
+
+                    Promise.all(promises).then((dat) => {
+                        if (newVal) {
+                            newVal = false;
+                            loading = false;
+                            loadRun();
+                            return;
+                        }
+
+                        newVal = false;
+                        loading = false;
+
+                        for (const [filename, content] of dat) {
+                            if (filename.endsWith(".log")) buildLog(filename, content);
+                            else graphModule(filename, content); // filename.endsWith(".csv")
+                        }
+
+                    }).catch(err => { handleNetErr(err); });
+                }).catch(err => {
+                    if (newVal) {
+                        loading = false;
+                        newVal = false;
+                        loadRun();
+                        return;
+                    }
+                    
+                    loading = false;
+                    newVal = false;
+                    handleNetErr(err);
+                });
+            }
+
+            const delimiter = ",";
+            const timeCol = "@time";
+            const offset = 0.1;
+
+            const layout = {
+                height: 500,
+                margin: {
+                    b: 30,
+                    t: 0,
+                    l: 0
+                },
+                xaxis: {
+                    title: "Time"
+                }
+            };
+
+            function buildLog(filename, content) {
+                const lines = content.split("\n").map(line => {
+                    const i = line.indexOf(":");
+                    return [+line.substring(0, i), line.substring(i+1)];
+                });
+            
+                const log = document.createElement("div");
+                const title = document.createElement("h2");
+                const contentEl = document.createElement("div");
+                const filter = document.createElement("div");
+                const start = document.createElement("input");
+                const end = document.createElement("input");
+
+                filter.classList.add("log-filter");
+                start.classList.add("filters");
+                end.classList.add("filters");
+
+                start.placeholder = lines[0][0];
+                end.placeholder = lines[lines.length-1][0];
+                filter.append(start, ":", end);
+
+                start.type = "number";
+                end.type = "number";
+
+                contentEl.classList.add("log-contents");
+
+                title.textContent = filename;
+                
+                log.append(title, contentEl, filter);
+                $("#graphs").append(log);
+
+                log.classList.add("logs");
+
+                let range = [0, Infinity];
+                start.addEventListener("input", () => {
+                    const value = start.value;
+                    if (isNaN(value) || value == "") {
+                        range[0] = 0;
+                        updateLog();
+                        return;
+                    }
+
+                    range[0] = +value;
+                    updateLog();
+                });
+
+                end.addEventListener("input", () => {
+                    const value = end.value;
+                    if (isNaN(value) || value == "") {
+                        range[1] = Infinity;
+                        updateLog();
+                        return;
+                    }
+
+                    range[1] = +value;
+                    updateLog();
+                });
+                
+                const updateLog = () => {
+                    contentEl.innerHTML = "";
+                    contentEl.append(...lines.filter(line => line[0] >= range[0] && line[0] <= range[1]).map(line => {
+                        const el = document.createElement("div");
+                        const time = document.createElement("span");
+                        const message = document.createElement("span");
+                        
+                        time.textContent = line[0];
+                        message.textContent = line[1];
+
+                        el.append(time, message);
+                        return el;
+                    }));
+                }
+
+                updateLog();
+            }
+
+            function graphModule(module, content) {
+                const rows = content.split("\n").map(row => row.split(delimiter));
+                if (rows.length == 0) return; // Invalid module
+
+                const header = rows[0].map(entry => {
+                    const match = entry.match(/^(.*)\[(.*?)\]$/);
+                    if (!match) return { name: entry, type: "d" }; // Default type
+                    
+                    return { name: match[1], type: match[2].toLowerCase() };
+                });
+                
+                // Init columns
+                const columns = header.reduce((acc, col) => { acc[col.name] = []; return acc; }, {});
+                if (!columns.hasOwnProperty(timeCol)) return; // Invalid header
+            
+                // Fill columns
+                rows.slice(1).forEach(row => {
+                    row.forEach((val, i) => {
+                        switch (header[i].type) {
+                            case "b":
+                                val = parseInt(val, 2); break;
+                            case "h":
+                                val = parseInt(val, 16); break;
+                            case "d":
+                            case "f":
+                            default:
+                                val = parseFloat(val); break;
+                        }
+                        columns[header[i].name].push(val);
+                    });
+                });
+
+                // Construct series
+                const series = [];
+                const axes = {};
+
+                const axesSize = Object.keys(columns).length - 1;
+                
+                let i = 0;
+                let firstMax = null;
+                for (const column in columns) {
+                    if (column == "@time") continue; // Don't plot @time vs @time graph: useless!
+
+                    series.unshift({
+                        mode: "lines",
+                        line: {
+                            shape: "vh"
+                        },
+                        name: column,
+                        x: columns[timeCol],
+                        y: columns[column],
+                        yaxis: `y${i + 1}`
+                    });
+
+                    const max = Math.max(...columns[column])
+                    if (firstMax == null) firstMax = max;
+                
+                    const base = -i * (1 + offset);
+                    axes[`yaxis${i+1}`] = {
+                        overlaying: "y",
+                        side: "left",
+                        position: i,
+                        showgrid: false,
+                        zeroline: false,
+                        visible: false,
+                        range: [base * max, (base + axesSize + (axesSize - 1) * offset) * max]
+                    };
+
+                    i++;
+                }
+
+                // Construct div for plot to live in
+                const plot = document.createElement("div");
+                plot.classList.add("plots");
+                $("#graphs").append(plot);
+
+                const title = document.createElement("h2");
+                title.textContent = module;
+                const contentEl = document.createElement("div");
+                plot.append(title, contentEl);
+
+
+                const localLayout = {
+                    ...layout,
+                    ...axes,
+                    yaxis: {
+                        title: "Signal",
+                        range: [0, (axesSize + (axesSize - 1) * offset) * (firstMax ?? 1)],
+                        visible: false
+                    }
+                };
+
+                Plotly.newPlot(contentEl, series, localLayout, { displaylogo: false, modeBarButtonsToRemove: ['autoscale'] })
+            }
+
+            // TODO: actually handle errors
+            function handleNetErr(err) {
+                console.error(err);
+            }
+        </script>
+    </body>
+</html>
