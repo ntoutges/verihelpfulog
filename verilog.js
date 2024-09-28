@@ -32,7 +32,17 @@ if (!fs.existsSync(path.join(cwd, "temp")) || !fs.statSync(path.join(cwd, "temp"
 function injectOutputCommands(text) {
     
     // Start output command with @::ost::_, and end with @::oen::_ => (O)utput (ST)art, and (O)utput (EN)d
-    return text.replace(/((?:\$display)|(?:\$monitor))\("(.*?[^\\])"(.*)\)/g, "$1(\"@::ost::_ \\n$2\\n@::oen::_ \\n\"$3);");
+    return text.replace(/((?:\$display)|(?:\$monitor))\("(.*?[^\\])"(.*)\)/gm, "$1(\"@::ost::_ \\n$2\\n@::oen::_ \\n\"$3);");
+}
+
+function modifyStopCommand(text) {
+    return text.replace(
+        /^([ \t]*)\$stop;/gm, // $stop within multi-line block
+        "$1$display(\"@::end::_ \");\n$1$stop;" // Insert display message
+    ).replace(
+        /^([ \t]*)(\w.*?)\$stop;/gm, // $stop within single-line block; Requires begin/end to be added.
+        "$1$2begin\n$1$1$display(\"@::end::_ \");\n$1$1$stop;\n$1end" // Add in begin/end block, and insert display message
+    );
 }
 
 function getFileTokens(data) {
@@ -177,6 +187,7 @@ function fileTr() {
                     
                     data = data.replace(/\r/g, ""); // Get rid of the worst character
                     data = injectOutputCommands(data); // Inject special characters into display commands
+                    data = modifyStopCommand(data); // Inject display before $stop, to notify the program to actually stop
                     
                     const tokens = getFileTokens(data);
 
@@ -339,7 +350,6 @@ async function processVVPLine(vvp, line, state) {
 
     switch (type) {
         case "mod": // Monitor Display
-            console.log(arg)
             state.out[module].push(["@time", ...arg.split(" <@@> ")]);
             break;
             case "mon": // Monitor
@@ -348,6 +358,9 @@ async function processVVPLine(vvp, line, state) {
         case "trk":
             state.time++;
             break;
+        case "end":
+            state.itt = state.simData.maxItt - 1; // Set to end condition
+            // nobreak
         case "int": // Interrupt
 
             state.itt++;

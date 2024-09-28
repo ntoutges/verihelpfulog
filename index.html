@@ -324,7 +324,10 @@
                         yaxis: `y${i + 1}`
                     });
 
-                    const max = Math.max(...columns[column])
+                    let max = 0;
+                    for (let c of columns[column]) {
+                        if (c > max) max = c;
+                    }
                     if (firstMax == null) firstMax = max;
                 
                     const base = -i * (1 + offset);
