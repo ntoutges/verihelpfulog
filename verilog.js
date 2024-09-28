@@ -398,7 +398,7 @@ function saveRunData(state, force = false) {
     
     promises.push(
         new Promise((resolve) => {
-            const pth = path.join(cwd, "/temp/sim/runs", `run-${state.simData.lastRun}`, "_out.log");
+            const pth = path.join(cwd, "/temp/sim/runs", `run-${state.simData.lastRun}`, "out.log");
             fs.writeFile(pth, state.output.join("\n"), { flag: "a" }, (err) => { resolve(); });
             state.output.splice(0); // Clear output array
         })

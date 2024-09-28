@@ -19,12 +19,17 @@
 
             .logs {
                 background: #dfedf3;
-
                 order: 0;
             }
 
             .plots {
+                position: relative;
                 order: 1;
+            }
+
+            .plots > h2 {
+                position: absolute;
+                z-index: 1;
             }
 
             .logs > .log-contents {
@@ -175,11 +180,17 @@
                 height: 500,
                 margin: {
                     b: 30,
-                    t: 0,
+                    t: 25,
                     l: 0
                 },
                 xaxis: {
                     title: "Time"
+                },
+                modebar: {
+                    add: [
+                        "hoverclosest",
+                        "hovercompare"
+                    ]
                 }
             };
 
@@ -305,7 +316,7 @@
                     series.unshift({
                         mode: "lines",
                         line: {
-                            shape: "vh"
+                            // shape: "vh"
                         },
                         name: column,
                         x: columns[timeCol],
@@ -320,7 +331,7 @@
                     axes[`yaxis${i+1}`] = {
                         overlaying: "y",
                         side: "left",
-                        position: i,
+                        position: 0,
                         showgrid: false,
                         zeroline: false,
                         visible: false,
