@@ -4,7 +4,8 @@ This relies on Icarus Verilog both being installed and setup properly in the pat
 
 ## Usage
 1. Put the vlg folder somewhere it won't be moved. This is important for the next step.
-2. Run the verilog.js program, as `node verilog.js` (or with whichever node interpreter you prefer). This will generate a makefile, which can be used in all subsequent projects.
+2. Run `npm install`. Note that this requires `npm` to be installed on your system.
+3. Run the verilog.js program, as `node verilog.js` (or with whichever node interpreter you prefer). This will generate a makefile, which can be used in all subsequent projects.
 
 ## Command Explanations
 * `build`
@@ -12,11 +13,11 @@ This relies on Icarus Verilog both being installed and setup properly in the pat
 * `run`
   * Simulate the project, saving the results to a file within `temp/sim/runs/`
 * `serve`
-  * Serve the local webpage (on port 3001) used to view the results of the simulation.
+  * Serve the local webpage used to view the results of the simulation.
 * `all`
   * build + run + serve
 * `open`
-  * Open the local webpage (localhost:3001) used to view the results of the simulation in your default browser.
+  * Open the local webpage (localhost) used to view the results of the simulation in your default browser.
 * `allo` (all/open)
   * build + run + serve + open
 

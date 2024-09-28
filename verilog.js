@@ -496,6 +496,7 @@ async function processRun() {
 
     console.log("Running...");
     await run(saveRunData, { ...simData, lastRun });
+    console.log("Successfully ran simulation!");
 }
 
 async function processServe(doOpen) {
@@ -520,10 +521,10 @@ async function processServe(doOpen) {
         catch(err) { res.send("[]"); }
     });
     
-    const listener = app.listen(3001, async () => {
+    const listener = app.listen(null, async () => {
         const port = listener.address().port;
         console.log(`App listening on port ${port}`);
-    
+        
         if (doOpen) {
             console.log(`Opening site at localhost:${port}`);
             const { openApp } = await import("open");
