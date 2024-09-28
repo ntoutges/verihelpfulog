@@ -576,9 +576,11 @@ const flags = new Set(process.argv.slice(2).filter(f => f.startsWith("-")).map(f
 async function main() {
     if (flags.size == 0 || flags.has("m")) buildMakeFile();         // Create make file (default behaviour)
 
-    if (flags.has("a") || flags.has("c")) await processCompile();   // (c)ompile
-    if (flags.has("a") || flags.has("r")) await processRun();       // (r)un
-    if (flags.has("a") || flags.has("ao") || flags.has("s") || flags.has("so")) await processServe(flags.has("so") || flags.has("ao")); // (s)erve or (s)erve/(o)pen page
+    const all = flags.has("a") || flags.has("ao");
+
+    if (all || flags.has("c")) await processCompile();  // (c)ompile
+    if (all || flags.has("r")) await processRun();      // (r)un
+    if (all || flags.has("s") || flags.has("so")) await processServe(flags.has("so") || flags.has("ao")); // (s)erve or (s)erve/(o)pen page
 }
 
 main();
