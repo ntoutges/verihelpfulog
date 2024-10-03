@@ -247,7 +247,7 @@ function getVars(module) {
         // Get rid of input/output prefixes
         if (line.startsWith("input ") || line.startsWith("output ")) line = line.substring(line.indexOf(" "));
 
-        let type = line.substring(0, line.indexOf(" "));
+        let type = line.substring(0, line.indexOf(" ")).trim();
         if (!types.has(type)) continue;
         line = line.substring(line.indexOf(" ") + 1);
 
