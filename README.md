@@ -21,13 +21,17 @@ This relies on Icarus Verilog both being installed and setup properly in the pat
 * `allo` (all/open)
   * build + run + serve + open
 
-## Special Comments
-To log data from a module in your verilog program, simply add in the following comment above the module to track:
+## !IMPORTANT: Special Comments
+To log data from a module in your verilog program to be printed to the graph, simply add in the following comment above the module to track:
 ```
 // @<name>(<vars_to_track>);
 ```
 
-`name` is how the contents will be tracked. This should be unique across multiple modules. One module should have a `name` of `main`.\
+## Quick Setup
+Put the following command above your testbench module: `// @main(*);`. This will track all variables within your testbench function
+
+## Explanation
+`name` is how the contents will be tracked. This should be unique across multiple modules. **Eactly one module should have a `name` of `main`.**\
 `vars_to_track` is a comma-separated list of values to track (monitor).
 * Each entry can be in the following format: `<var_name>[<start_index>:<end_index>]: <type>`
   * `var_name`: The name of the var/net to track
@@ -38,3 +42,11 @@ To log data from a module in your verilog program, simply add in the following c
     * int/integer: %d
     * float/number: %f
     * hex: %H
+
+## Example Setups
+
+The following header will only track `my_var1` and `my_var2` to plot.\
+`// main(my_var1, my_var2);`\
+
+The following header will only track the first 4 bytes of `my_wire`.\
+`// main(my_wire);`

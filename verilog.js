@@ -1,6 +1,25 @@
-const fs = require("node:fs");
-const path = require("node:path");
-const { spawn, exec } = require("node:child_process");
+let fs = null;
+let path = null;
+let spawn = null;
+let exec = null;
+
+try {
+    fs = require("fs");
+    path = require("path");
+    const child_process = require("child_process");
+
+    spawn = child_process.spawn;
+    exec = child_process.exec;
+}
+catch(err) {
+    const missing = [];
+    if (fs == null) missing.push("path");
+    if (path == null) missing.push("path");
+    if (spawn == null || exec == null) missing.push("child_process");
+
+    console.log(`Failed to run verihelpfulog: Missing packages: [ ${missing.join(" ")} ]`);
+    console.log(`You are likely running an old version of node. To install the requisite packages: run the following command${missing.length == 1 ? "" : "s"}\n${missing.map(pkg => `$ npm install ${pkg}`).join("\n")}`);
+}
 
 const cwd = process.cwd();
 const ext = new Set([ "v" ]);
@@ -37,10 +56,10 @@ function injectOutputCommands(text) {
 
 function modifyStopCommand(text) {
     return text.replace(
-        /^([ \t]*)\$stop;/gm, // $stop within multi-line block
+        /^([ \t]*)(?:(?:\$stop)|(?:\$finish));/gm, // $stop or $finish within multi-line block
         "$1$display(\"@::end::_ \");\n$1$stop;" // Insert display message
     ).replace(
-        /^([ \t]*)(\w.*?)\$stop;/gm, // $stop within single-line block; Requires begin/end to be added.
+        /^([ \t]*)(\w.*?)(?:(?:\$stop)|(?:$finish));/gm, // $stop or $finish within single-line block; Requires begin/end to be added.
         "$1$2begin\n$1$1$display(\"@::end::_ \");\n$1$1$stop;\n$1end" // Add in begin/end block, and insert display message
     );
 }
@@ -282,8 +301,10 @@ function compile() {
     const outfile = "\"" + path.join(cwd, out).replace(/"/g, "\\\"") + "\"";
     const paths = vFiles.map(filename => "\"" + path.join(cwd, "temp/build", filename).replace(/"/g, "\\\"") + "\"");
 
+    const runner = process.platform == "win32" ? "powershell /c " : ""; // Windows requires powershell to run; Other platforms don't
+    
     return new Promise((resolve, reject) => {
-        exec(`powershell /c iverilog -o ${outfile} ${paths.join(" ")}`, (err, stdout, stderr) => {
+        exec(`${runner} iverilog -o ${outfile} ${paths.join(" ")}`, (err, stdout, stderr) => {
             if (err) {
                 reject(err);
                 return;
@@ -510,7 +531,7 @@ async function processServe(doOpen) {
     });
 
     app.get("/runs", (req, res) => {
-        if (!req.query?.r) {
+        if (!req.query || !req.query.r) {
             res.send(JSON.stringify(fs.readdirSync(path.join(cwd, "temp/sim/runs"))));
             return;
         }
@@ -521,7 +542,7 @@ async function processServe(doOpen) {
         catch(err) { res.send("[]"); }
     });
     
-    const listener = app.listen(null, async () => {
+    const listener = app.listen(4000, async () => {
         const port = listener.address().port;
         console.log(`App listening on port ${port}`);
         
@@ -529,6 +550,9 @@ async function processServe(doOpen) {
             console.log(`Opening site at localhost:${port}`);
             const { openApp } = await import("open");
             await openApp(`http://localhost:${port}`);
+        }
+        else {
+            console.log(`Open at http://localhost:${port}`);
         }
     });
 }

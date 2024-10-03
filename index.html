@@ -285,9 +285,12 @@
                 const columns = header.reduce((acc, col) => { acc[col.name] = []; return acc; }, {});
                 if (!columns.hasOwnProperty(timeCol)) return; // Invalid header
             
+                const contestedRows = new Set();
+            
                 // Fill columns
                 rows.slice(1).forEach(row => {
                     row.forEach((val, i) => {
+                        let oldVal = val;
                         switch (header[i].type) {
                             case "b":
                                 val = parseInt(val, 2); break;
@@ -298,6 +301,9 @@
                             default:
                                 val = parseFloat(val); break;
                         }
+
+                        if (oldVal.includes("z")) contestedRows.add(i);
+                            
                         columns[header[i].name].push(val);
                     });
                 });
@@ -366,6 +372,13 @@
                 };
 
                 Plotly.newPlot(contentEl, series, localLayout, { displaylogo: false, modeBarButtonsToRemove: ['autoscale'] })
+
+                Array.from(contestedRows).map(i => header[i].name).forEach((signal) => {
+                    const error = document.createElement("div");
+                    error.style.color = "darkred";
+                    error.innerText = `Contested/unset signal: "${signal}"`;
+                    plot.append(error);
+                });
             }
 
             // TODO: actually handle errors
