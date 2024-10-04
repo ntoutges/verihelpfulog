@@ -327,15 +327,13 @@ async function processCompile() { console.log("Transpiling...");
     }
     catch(err) {
         console.log("Failed to clean build directory");
-        reject(err);
-        return;
+        throw err;
     }
 
     try { await fileTr(); }
     catch(err) {
         console.log("Failed to transpile.");
-        reject(err);
-        return;
+        throw err;
     }
     console.log("Compiling...");
 
@@ -343,8 +341,7 @@ async function processCompile() { console.log("Transpiling...");
     catch(err) {
         console.log("Failed to compile");
         console.log(err);
-        reject(err);
-        return;
+        throw err;
     }
 
     console.log(`Successfully compiled into ${out}`);
@@ -602,9 +599,11 @@ async function main() {
 
     const all = flags.has("a") || flags.has("ao");
 
-    if (all || flags.has("c")) await processCompile();  // (c)ompile
-    if (all || flags.has("r")) await processRun();      // (r)un
-    if (all || flags.has("s") || flags.has("so")) await processServe(flags.has("so") || flags.has("ao")); // (s)erve or (s)erve/(o)pen page
+    try {
+        if (all || flags.has("c")) await processCompile();  // (c)ompile
+        if (all || flags.has("r")) await processRun();      // (r)un
+        if (all || flags.has("s") || flags.has("so")) await processServe(flags.has("so") || flags.has("ao")); // (s)erve or (s)erve/(o)pen page
+    } catch(err) {}
 }
 
 main();
