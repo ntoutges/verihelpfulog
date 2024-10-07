@@ -302,7 +302,7 @@
                                 val = parseFloat(val); break;
                         }
 
-                        if (oldVal.includes("z")) contestedRows.add(i);
+                        if (oldVal.includes("z") | oldVal.includes("x")) contestedRows.add(i);
                             
                         columns[header[i].name].push(val);
                     });
@@ -330,7 +330,7 @@
                         yaxis: `y${i + 1}`
                     });
 
-                    let max = 0;
+                    let max = 1;
                     for (let c of columns[column]) {
                         if (c > max) max = c;
                     }
