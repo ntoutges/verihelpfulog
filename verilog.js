@@ -339,8 +339,12 @@ async function processCompile() { console.log("Transpiling...");
 
     try { await compile(); }
     catch(err) {
+        let sep = path.sep.replace(/\\/g, "\\\\");
+
         console.log("Failed to compile");
-        console.log(err);
+        
+        const pattern = new RegExp(`^(.*?)${sep}temp${sep}build(${sep}[^.]*\.v)(.*?)$`, "gm");
+        console.log(err.message.split("\n").map(line => "> " + line.replace(pattern, "$1$2$3")).join("\n"));
         throw err;
     }
 
